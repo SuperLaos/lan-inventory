@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}物料仓库进销存{% endblock %} - 市场管理中心</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", "微软雅黑", sans-serif; background: #f0f2f5; color: #333; }
+.header { background: #1a4d8f; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 18px; font-weight: normal; }
+.header .user-info { font-size: 13px; }
+.header .user-info a { color: #ffd700; margin-left: 12px; text-decoration: none; }
+.container { display: flex; min-height: calc(100vh - 54px); }
+.sidebar { width: 180px; background: #fff; border-right: 1px solid #ddd; padding-top: 10px; }
+.sidebar a { display: block; padding: 12px 20px; color: #555; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; }
+.sidebar a:hover { background: #f5f8fc; color: #1a4d8f; }
+.sidebar a.active { background: #e8f0fa; color: #1a4d8f; border-left-color: #1a4d8f; font-weight: bold; }
+.main { flex: 1; padding: 24px; overflow: auto; }
+h2 { font-size: 20px; margin-bottom: 18px; color: #1a4d8f; }
+.card { background: #fff; border-radius: 8px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 18px; }
+.alert { padding: 10px 16px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
+.alert-error { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; }
+.alert-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+.btn { display: inline-block; padding: 8px 22px; background: #1a4d8f; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; text-decoration: none; }
+.btn:hover { background: #14406f; }
+.btn-sm { padding: 4px 12px; font-size: 13px; }
+.btn-danger { background: #cf1322; }
+.btn-danger:hover { background: #a30f1c; }
+.btn-success { background: #389e0d; }
+.btn-success:hover { background: #2d7c0a; }
+label { display: inline-block; width: 130px; text-align: right; padding-right: 10px; font-size: 14px; }
+input[type=text], input[type=password], input[type=number], input[type=date], select {
+  padding: 7px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 14px; width: 220px; font-family: inherit;
+}
+input:focus, select:focus { border-color: #1a4d8f; outline: none; }
+.req { color: #f5222d; margin-left: 3px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 9px 12px; border: 1px solid #e8e8e8; text-align: left; white-space: nowrap; }
+th { background: #fafafa; font-weight: bold; }
+tr:hover td { background: #f5f8fc; }
+.low-row td { background: #fff1f0 !important; color: #cf1322; }
+.form-group { margin-bottom: 14px; }
+.form-group .hint { color: #999; font-size: 12px; margin-left: 140px; }
+.login-box { width: 360px; margin: 80px auto; background: #fff; border-radius: 10px; padding: 36px 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
+.login-box h2 { text-align: center; margin-bottom: 28px; }
+.login-box .form-group label { width: 80px; }
+.login-box input { width: 240px; }
+.login-box .btn { width: 100%; padding: 11px; font-size: 16px; margin-top: 8px; }
+.tabs { margin-bottom: 16px; border-bottom: 2px solid #1a4d8f; }
+.tabs a { display: inline-block; padding: 8px 20px; text-decoration: none; color: #666; font-size: 15px; }
+.tabs a.active { background: #1a4d8f; color: #fff; border-radius: 6px 6px 0 0; }
+.stat-row { display: flex; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }
+.stat-card { flex: 1; min-width: 160px; background: #fff; border-radius: 8px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.stat-card .num { font-size: 28px; font-weight: bold; color: #1a4d8f; }
+.stat-card .num.red { color: #cf1322; }
+.stat-card .lbl { font-size: 13px; color: #888; margin-top: 4px; }
+.filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.filter-bar label { width: auto; text-align: left; padding-right: 4px; }
+.filter-bar input, .filter-bar select { width: 150px; }
+.radio-group { display: inline-block; margin-right: 24px; font-size: 15px; }
+.radio-group input { width: auto; }
+.modal-mask { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+.modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; padding: 24px 30px; z-index: 100; min-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+.modal h3 { margin-bottom: 16px; color: #1a4d8f; }
+.modal .form-group label { width: 100px; }
+.empty { text-align: center; color: #999; padding: 30px; font-size: 14px; }
+.tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; }
+.tag-in { background: #f6ffed; color: #389e0d; }
+.tag-out { background: #fff1f0; color: #cf1322; }
+.tag-warn { background: #fff7e6; color: #d46b08; }
+</style>
+</head>
+<body>
+{% block body %}
+{% if user %}
+<div class="header">
+  <h1>市场管理中心 · 物料仓库进销存系统</h1>
+  <div class="user-info">
+    {{ user.user_name }}（{{ perms_role_name(user.role) }}）
+    <a href="{{ url_for('change_password') }}">修改密码</a>
+    <a href="{{ url_for('logout') }}">退出登录</a>
+  </div>
+</div>
+<div class="container">
+  <div class="sidebar">
+    {% for href, label, _show in menu %}
+    <a href="{{ url_for(href) }}" class="{% if request.endpoint == href %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="main">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+{% else %}
+{% block guest %}{% endblock %}
+{% endif %}
+{% endblock %}
+</body>
+</html>

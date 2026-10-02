@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}出库{% endblock %}
+{% block content %}
+<h2>出库登记</h2>
+
+{% if errors %}
+<div class="alert alert-error">
+  <b>操作失败，请修正以下问题：</b>
+  <ul style="margin:6px 0 0 20px">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if success %}
+<div class="alert alert-success">✅ {{ success }}</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('outbound_do') }}">
+  <div class="card">
+    <div class="form-group">
+      <label>出库日期<span class="req">*</span></label>
+      <input type="date" name="out_date" value="{{ form.out_date if form else today }}" required>
+    </div>
+    <div class="form-group">
+      <label>发出部门<span class="req">*</span></label>
+      <select name="dept_id" id="dept_id" onchange="loadUsers()" required>
+        <option value="">请选择部门</option>
+        {% for did, dn in depts %}
+        <option value="{{ did }}" {% if form and form.dept_id == did %}selected{% endif %}>{{ dn }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>发出人员<span class="req">*</span></label>
+      <select name="user_id" id="user_id" onchange="loadStock()" required>
+        <option value="">请先选择部门</option>
+      </select>
+    </div>
+    <hr style="margin:16px 0;border:none;border-top:1px dashed #ddd">
+    <div class="form-group">
+      <label>选择物料<span class="req">*</span></label>
+      <select name="stock_id" id="stock_id" onchange="pickStock()" required>
+        <option value="">请先选择部门和人员</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>计量单位</label>
+      <input type="text" id="o_unit" disabled placeholder="自动带出">
+    </div>
+    <div class="form-group">
+      <label>现有库存</label>
+      <input type="text" id="o_cur_qty" disabled placeholder="自动带出">
+    </div>
+    <hr style="margin:16px 0;border:none;border-top:1px dashed #ddd">
+    <div class="form-group">
+      <label>领用部门<span class="req">*</span></label>
+      <input type="text" name="recv_dept" list="company_dept_list" value="{{ form.recv_dept if form else '' }}" required placeholder="选择或手工输入领用部门">
+      <datalist id="company_dept_list">
+        {% for d in company_depts %}<option value="{{ d }}">{% endfor %}
+      </datalist>
+    </div>
+    <div class="form-group">
+      <label>领用人<span class="req">*</span></label>
+      <input type="text" name="recv_person" value="{{ form.recv_person if form else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label>申请单号<span class="req">*</span></label>
+      <input type="text" name="apply_no" value="{{ form.apply_no if form else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label>申请数量<span class="req">*</span></label>
+      <input type="number" name="apply_qty" id="apply_qty" min="1" value="{{ form.apply_qty if form else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label>实际领用数量<span class="req">*</span></label>
+      <input type="number" name="actual_qty" id="actual_qty" min="1" value="{{ form.actual_qty if form else '' }}" required>
+      <span class="hint">不能超过申请数量，也不能超过现有库存</span>
+    </div>
+    <div class="form-group">
+      <label>用途</label>
+      <input type="text" name="purpose" value="{{ form.purpose if form else '' }}" placeholder="可不填">
+    </div>
+    <div class="form-group">
+      <label>备注</label>
+      <input type="text" name="remark" value="{{ form.remark if form else '' }}" placeholder="可不填">
+    </div>
+    <div class="form-group">
+      <label></label>
+      <button type="submit" class="btn btn-danger">确认出库</button>
+    </div>
+  </div>
+</form>
+
+<script>
+function loadUsers() {
+  var deptSel = document.getElementById('dept_id');
+  var userSel = document.getElementById('user_id');
+  userSel.innerHTML = '<option value="">请先选择部门</option>';
+  document.getElementById('stock_id').innerHTML = '<option value="">请先选择部门和人员</option>';
+  ['o_unit','o_cur_qty'].forEach(function(id){ document.getElementById(id).value=''; });
+  if (!deptSel.value) return;
+  fetch('{{ url_for("api_users_by_dept") }}?dept_id=' + deptSel.value)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      userSel.innerHTML = '<option value="">请选择人员</option>';
+      list.forEach(function(u) {
+        var o = document.createElement('option');
+        o.value = u.user_id; o.textContent = u.user_name;
+        userSel.appendChild(o);
+      });
+    });
+}
+
+function loadStock() {
+  var dept = document.getElementById('dept_id').value;
+  var uid = document.getElementById('user_id').value;
+  var sel = document.getElementById('stock_id');
+  sel.innerHTML = '<option value="">请选择物料</option>';
+  ['o_unit','o_cur_qty'].forEach(function(id){ document.getElementById(id).value=''; });
+  if (!dept || !uid) return;
+  fetch('{{ url_for("api_stock_by_owner") }}?dept_id=' + dept + '&user_id=' + uid)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      sel.innerHTML = '<option value="">请选择物料</option>';
+      list.forEach(function(s) {
+        var o = document.createElement('option');
+        o.value = s.stock_id;
+        o.textContent = '[' + s.category_name + '] ' + s.material_name + '（库存' + s.quantity + s.unit_name + '）';
+        sel.appendChild(o);
+      });
+      window.__stocks = list;
+    });
+}
+
+function pickStock() {
+  var sel = document.getElementById('stock_id');
+  var s = (window.__stocks || []).find(function(x){ return x.stock_id === sel.value; });
+  if (!s) return;
+  document.getElementById('o_unit').value = s.unit_name;
+  document.getElementById('o_cur_qty').value = s.quantity + ' ' + s.unit_name;
+}
+</script>
+{% endblock %}

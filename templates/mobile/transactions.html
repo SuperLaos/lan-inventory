@@ -1,0 +1,58 @@
+{% extends 'mobile/base.html' %}
+{% block title %}出入库明细{% endblock %}
+{% block mtitle %}出入库明细{% endblock %}
+{% block content %}
+<div class="m-card">
+  <form method="get">
+    <select class="m-select" name="type">
+      <option value="all" {% if q_type == 'all' %}selected{% endif %}>类型：全部</option>
+      <option value="in" {% if q_type == 'in' %}selected{% endif %}>类型：入库</option>
+      <option value="out" {% if q_type == 'out' %}selected{% endif %}>类型：出库</option>
+    </select>
+    <select class="m-select" name="dept_id">
+      <option value="">部门：全部</option>
+      {% for did, dn in depts %}
+      <option value="{{ did }}" {% if q_dept == did %}selected{% endif %}>{{ dn }}</option>
+      {% endfor %}
+    </select>
+    <select class="m-select" name="user_id">
+      <option value="">人员：全部</option>
+      {% for uid, un in users %}
+      <option value="{{ uid }}" {% if q_user == uid %}selected{% endif %}>{{ un }}</option>
+      {% endfor %}
+    </select>
+    <input class="m-input" type="date" name="from_date" value="{{ q_from }}" style="margin-bottom:6px">
+    <input class="m-input" type="date" name="to_date" value="{{ q_to }}" style="margin-bottom:6px">
+    <input class="m-input" type="text" name="keyword" value="{{ q_name }}" placeholder="物料名称关键字" style="margin-bottom:10px">
+    <button type="submit" class="m-btn m-btn-primary">查询</button>
+  </form>
+</div>
+
+{% if rows %}
+  {% for r in rows %}
+  <div class="m-item">
+    <div class="title">
+      {% if r._type == '入库' %}<span class="m-tag m-tag-in">入库</span>
+      {% else %}<span class="m-tag m-tag-out">出库</span>{% endif %}
+      {{ r.material_name }}
+      <span style="float:right;font-weight:normal;color:#999;font-size:13px">{{ r._date }}</span>
+    </div>
+    <div class="meta">
+      {{ r.dept_name }} / {{ r.user_name }} ｜ {{ r.category_name }}<br>
+      数量：<b>{{ r._qty }}{{ r.unit_name }}</b> ｜ 供应商：{{ r.supplier_name }}<br>
+      {% if bid_visible and r._type == '入库' %}
+      中标：{{ r.get('bid_date', '') }} / ¥{{ r.get('bid_price', '') }}<br>
+      {% endif %}
+      操作人：{{ r.operator_name }}
+      {% if r._type == '入库' %}（{{ '新品' if r.operation_type == 'new' else '续作' }}）{% endif %}
+      {% if r._type == '出库' %}
+      <br>领用：{{ r.recv_dept_id }} / {{ r.recv_person }}（{{ r.apply_no }}）
+      {% if r.purpose %}<br>用途：{{ r.purpose }}{% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="m-empty">暂无明细记录</div>
+{% endif %}
+{% endblock %}

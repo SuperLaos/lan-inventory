@@ -1,0 +1,16 @@
+{% extends 'mobile/base.html' %}
+{% block title %}出错了{% endblock %}
+{% block guest %}
+<div class="m-login">
+  <div class="logo">出错了（{{ code }}）</div>
+  <div class="m-alert m-alert-error" style="text-align:center">{{ msg }}</div>
+  <a href="{{ url_for('m_login') }}" class="m-btn m-btn-primary">返回登录</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="m-card" style="text-align:center">
+  <div style="font-size:48px;margin:16px 0">⚠️</div>
+  <div class="m-alert m-alert-error">{{ msg }}</div>
+  <a href="{{ url_for('m_index') }}" class="m-btn m-btn-primary">返回首页</a>
+</div>
+{% endblock %}

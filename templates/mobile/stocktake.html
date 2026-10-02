@@ -1,0 +1,125 @@
+{% extends 'mobile/base.html' %}
+{% block title %}盘点{% endblock %}
+{% block mtitle %}库存盘点{% endblock %}
+{% block content %}
+
+{% if errors %}
+<div class="m-alert m-alert-error">
+  <b>操作失败：</b><br>
+  {% for e in errors %}· {{ e }}<br>{% endfor %}
+</div>
+{% endif %}
+{% if success %}
+<div class="m-alert m-alert-success">✅ {{ success }}</div>
+{% endif %}
+
+<div class="m-card">
+  <form method="post" action="{{ url_for('stocktake_do') }}">
+    <label class="m-lab">盘点日期<span class="req">*</span></label>
+    <input class="m-input" type="date" name="take_date" value="{{ form.take_date if form else today }}" required>
+    <label class="m-lab">部门<span class="req">*</span></label>
+    <select class="m-select" name="dept_id" id="dept_id" onchange="loadUsers()" required>
+      <option value="">请选择部门</option>
+      {% for did, dn in depts %}
+      <option value="{{ did }}">{{ dn }}</option>
+      {% endfor %}
+    </select>
+    <label class="m-lab">人员<span class="req">*</span></label>
+    <select class="m-select" name="user_id" id="user_id" onchange="loadStock()" required>
+      <option value="">请先选择部门</option>
+    </select>
+    <label class="m-lab">选择物料<span class="req">*</span></label>
+    <select class="m-select" name="stock_id" id="stock_id" onchange="pickStock()" required>
+      <option value="">请先选择部门和人员</option>
+    </select>
+    <div id="book-info" style="margin-top:10px"></div>
+    <label class="m-lab">实际盘点数量<span class="req">*</span></label>
+    <input class="m-input" type="number" inputmode="numeric" name="actual_qty" id="actual_qty" min="0" required oninput="calcDiff()">
+    <div id="diff-info" style="margin-top:10px"></div>
+    <label class="m-lab">备注（可不填）</label>
+    <input class="m-input" type="text" name="remark">
+    <button type="submit" class="m-btn m-btn-primary" style="margin-top:20px">提交盘点</button>
+    <div style="font-size:12px;color:#999;margin-top:8px">差异不为 0 时自动调整库存，全程留痕</div>
+  </form>
+</div>
+
+<div class="m-card">
+  <div style="font-weight:bold;margin-bottom:10px">盘点记录（最近 200 条）</div>
+  <div id="take-list"></div>
+</div>
+
+<script>
+function loadUsers() {
+  var deptSel = document.getElementById('dept_id');
+  var userSel = document.getElementById('user_id');
+  userSel.innerHTML = '<option value="">请选择人员</option>';
+  document.getElementById('stock_id').innerHTML = '<option value="">请选择物料</option>';
+  document.getElementById('book-info').innerHTML = '';
+  if (!deptSel.value) return;
+  fetch('{{ url_for("api_users_by_dept") }}?dept_id=' + deptSel.value)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      userSel.innerHTML = '<option value="">请选择人员</option>';
+      list.forEach(function(u) {
+        var o = document.createElement('option');
+        o.value = u.user_id; o.textContent = u.user_name;
+        userSel.appendChild(o);
+      });
+    });
+}
+function loadStock() {
+  var dept = document.getElementById('dept_id').value;
+  var uid = document.getElementById('user_id').value;
+  var sel = document.getElementById('stock_id');
+  sel.innerHTML = '<option value="">请选择物料</option>';
+  document.getElementById('book-info').innerHTML = '';
+  if (!dept || !uid) return;
+  fetch('{{ url_for("api_stock_by_owner") }}?dept_id=' + dept + '&user_id=' + uid)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      sel.innerHTML = '<option value="">请选择物料</option>';
+      list.forEach(function(s) {
+        var o = document.createElement('option');
+        o.value = s.stock_id;
+        o.textContent = '[' + s.category_name + '] ' + s.material_name + '（库存' + s.quantity + s.unit_name + '）';
+        sel.appendChild(o);
+      });
+      window.__stocks = list;
+    });
+}
+function pickStock() {
+  var sel = document.getElementById('stock_id');
+  var s = (window.__stocks || []).find(function(x){ return x.stock_id === sel.value; });
+  document.getElementById('book-info').innerHTML = s
+    ? '<div class="m-alert m-alert-warn">账面数量：<b>' + s.quantity + s.unit_name + '</b></div>' : '';
+  calcDiff();
+}
+function calcDiff() {
+  var b = window.__stocks && window.__stocks.find(function(x){ return x.stock_id === document.getElementById('stock_id').value; });
+  var a = document.getElementById('actual_qty').value;
+  if (!b || a === '') { document.getElementById('diff-info').innerHTML = ''; return; }
+  var d = parseInt(a) - parseInt(b.quantity);
+  document.getElementById('diff-info').innerHTML =
+    '<div class="m-alert ' + (d > 0 ? 'm-alert-success' : (d < 0 ? 'm-alert-error' : 'm-alert-warn')) +
+    '">' + (d > 0 ? '盘盈 +' + d : (d < 0 ? '盘亏 ' + d : '账实相符')) + '</div>';
+}
+fetch('{{ url_for("api_stocktake_rows") }}')
+  .then(function(r){ return r.json(); })
+  .then(function(list) {
+    var box = document.getElementById('take-list');
+    if (!list.length) { box.innerHTML = '<div class="m-empty">暂无盘点记录</div>'; return; }
+    list.forEach(function(r) {
+      var el = document.createElement('div');
+      el.className = 'm-item';
+      var diff = parseInt(r.diff);
+      el.innerHTML = '<div class="title">' + r.material_name +
+        ' <span class="m-tag ' + (diff > 0 ? 'm-tag-in' : (diff < 0 ? 'm-tag-out' : 'm-tag-warn')) +
+        '" style="float:right">' + r.adjust_type + '</span></div>' +
+        '<div class="meta">' + r.take_date + ' ｜ ' + r.dept_name + ' / ' + r.user_name + '<br>' +
+        '账面 ' + r.book_qty + ' ｜ 实盘 ' + r.actual_qty + ' ｜ 差异 ' + r.diff + '<br>' +
+        '操作人：' + r.operator_name + (r.remark ? '<br>备注：' + r.remark : '') + '</div>';
+      box.appendChild(el);
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}首页{% endblock %}
+{% block content %}
+<h2>工作台</h2>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="num">{{ today_in }}</div><div class="lbl">今日入库笔数</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ today_out }}</div><div class="lbl">今日出库笔数</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ total_stock }}</div><div class="lbl">在库物料记录数</div>
+  </div>
+  <div class="stat-card">
+    <div class="num {% if low_count > 0 %}red{% endif %}">{{ low_count }}</div><div class="lbl">低于安全库存</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-bottom:12px">⚠️ 库存预警（低于安全库存阈值）</h2>
+  {% if warns %}
+  <table>
+    <tr><th>部门</th><th>人员</th><th>大类</th><th>物料名称</th><th>供应商</th><th>单位</th>
+        <th>当前库存</th><th>安全阈值</th><th>缺口</th><th>最后入库日期</th></tr>
+    {% for r in warns %}
+    <tr class="low-row">
+      <td>{{ r.dept_name }}</td>
+      <td>{{ r.user_name }}</td>
+      <td>{{ r.category_name }}</td>
+      <td>{{ r.material_name }}</td>
+      <td>{{ r.supplier_name }}</td>
+      <td>{{ r.unit_name }}</td>
+      <td>{{ r.quantity }}</td>
+      <td>{{ r.safety_threshold }}</td>
+      <td>{{ r.safety_threshold|int - r.quantity|int }}</td>
+      <td>{{ r.last_in_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">🎉 当前没有低于安全库存的物料。</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-bottom:12px">快捷入口</h2>
+  <a href="{{ url_for('inventory') }}" class="btn">库存查询</a>
+  <a href="{{ url_for('transactions') }}" class="btn" style="margin-left:10px">出入库明细</a>
+</div>
+{% endblock %}

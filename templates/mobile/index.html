@@ -1,0 +1,34 @@
+{% extends 'mobile/base.html' %}
+{% block title %}首页{% endblock %}
+{% block mtitle %}工作台{% endblock %}
+{% block content %}
+{% if success %}
+<div class="m-alert m-alert-success">✅ {{ success }}</div>
+{% endif %}
+
+<div class="m-stat">
+  <div class="sc"><div class="num">{{ today_in }}</div><div class="lbl">今日入库笔数</div></div>
+  <div class="sc"><div class="num">{{ today_out }}</div><div class="lbl">今日出库笔数</div></div>
+  <div class="sc"><div class="num">{{ total_stock }}</div><div class="lbl">在库记录数</div></div>
+  <div class="sc"><div class="num {% if low_count > 0 %}red{% endif %}">{{ low_count }}</div><div class="lbl">低于安全库存</div></div>
+</div>
+
+<div class="m-card">
+  <div style="font-weight:bold;font-size:16px;margin-bottom:10px">⚠️ 库存预警</div>
+  {% if warns %}
+    {% for r in warns %}
+    <div class="m-item low">
+      <div class="title">{{ r.material_name }}</div>
+      <div class="meta">
+        {{ r.dept_name }} / {{ r.user_name }}<br>
+        当前：<b style="color:#cf1322">{{ r.quantity }}{{ r.unit_name }}</b> ｜ 安全阈值：{{ r.safety_threshold }}
+        {% if r.safety_threshold|int > r.quantity|int %}（缺 {{ r.safety_threshold|int - r.quantity|int }}）{% endif %}<br>
+        最后入库：{{ r.last_in_date }}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="m-empty">🎉 当前没有低于安全库存的物料</div>
+  {% endif %}
+</div>
+{% endblock %}

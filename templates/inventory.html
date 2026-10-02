@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}库存查询{% endblock %}
+{% block content %}
+<h2>库存查询</h2>
+<div class="card">
+  <form method="get" class="filter-bar">
+    <label>部门</label>
+    <select name="dept_id">
+      <option value="">全部</option>
+      {% for did, dn in depts %}
+      <option value="{{ did }}" {% if q_dept == did %}selected{% endif %}>{{ dn }}</option>
+      {% endfor %}
+    </select>
+    <label>人员</label>
+    <select name="user_id">
+      <option value="">全部</option>
+      {% for uid, un in users %}
+      <option value="{{ uid }}" {% if q_user == uid %}selected{% endif %}>{{ un }}</option>
+      {% endfor %}
+    </select>
+    <label>物料关键字</label>
+    <input type="text" name="keyword" value="{{ q_name }}" placeholder="物料名称包含">
+    <button type="submit" class="btn btn-sm">查询</button>
+    <a href="{{ url_for('inventory') }}" class="btn btn-sm" style="background:#999">重置</a>
+  </form>
+</div>
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <tr><th>部门</th><th>人员</th><th>大类</th><th>物料名称</th><th>供应商</th><th>单位</th>
+        <th>库存数量</th><th>安全库存阈值</th><th>状态</th><th>最后入库日期</th></tr>
+    {% for r in rows %}
+    <tr class="{% if r.low %}low-row{% endif %}">
+      <td>{{ r.dept_name }}</td>
+      <td>{{ r.user_name }}</td>
+      <td>{{ r.category_name }}</td>
+      <td>{{ r.material_name }}</td>
+      <td>{{ r.supplier_name }}</td>
+      <td>{{ r.unit_name }}</td>
+      <td>{{ r.quantity }}</td>
+      <td>{{ r.safety_threshold }}</td>
+      <td>{% if r.low %}<span class="tag tag-warn">低于安全库存</span>{% else %}<span class="tag tag-in">正常</span>{% endif %}</td>
+      <td>{{ r.last_in_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">暂无库存记录</div>
+  {% endif %}
+</div>
+{% endblock %}

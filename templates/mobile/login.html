@@ -1,0 +1,20 @@
+{% extends 'mobile/base.html' %}
+{% block title %}登录{% endblock %}
+{% block guest %}
+<div class="m-login">
+  <div class="logo">物料仓库进销存系统</div>
+  {% if error %}<div class="m-alert m-alert-error">{{ error }}</div>{% endif %}
+  <form method="post">
+    <div style="margin-bottom:16px">
+      <label class="m-lab">用户名</label>
+      <input class="m-input" type="text" name="user_name" required autofocus placeholder="请输入用户名">
+    </div>
+    <div style="margin-bottom:24px">
+      <label class="m-lab">密码</label>
+      <input class="m-input" type="password" name="password" required placeholder="请输入密码">
+    </div>
+    <button type="submit" class="m-btn m-btn-primary">登 录</button>
+  </form>
+  <p style="text-align:center;color:#bbb;font-size:12px;margin-top:24px">市场管理中心 · 物料仓库管理系统</p>
+</div>
+{% endblock %}

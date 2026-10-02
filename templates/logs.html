@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}操作日志{% endblock %}
+{% block content %}
+<h2>操作日志（最近 500 条）</h2>
+<div class="card">
+  {% if rows %}
+  <table>
+    <tr><th>时间</th><th>操作人</th><th>动作</th><th>明细</th><th>IP</th></tr>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.log_time }}</td>
+      <td>{{ r.user_name }}</td>
+      <td><span class="tag tag-warn">{{ r.action }}</span></td>
+      <td style="white-space:normal">{{ r.detail }}</td>
+      <td>{{ r.ip }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">暂无操作记录</div>
+  {% endif %}
+</div>
+{% endblock %}

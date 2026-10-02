@@ -1,0 +1,17 @@
+{% extends 'mobile/base.html' %}
+{% block title %}操作日志{% endblock %}
+{% block mtitle %}操作日志（最近 500 条）{% endblock %}
+{% block content %}
+{% if rows %}
+  {% for r in rows %}
+  <div class="m-item">
+    <div class="title"><span class="m-tag m-tag-warn">{{ r.action }}</span> {{ r.user_name }}
+      <span style="float:right;font-weight:normal;color:#999;font-size:13px">{{ r.log_time }}</span>
+    </div>
+    <div class="meta">{{ r.detail }}<br>IP：{{ r.ip }}</div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="m-empty">暂无操作记录</div>
+{% endif %}
+{% endblock %}

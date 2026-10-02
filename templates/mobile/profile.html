@@ -1,0 +1,45 @@
+{% extends 'mobile/base.html' %}
+{% block title %}我的{% endblock %}
+{% block mtitle %}我的{% endblock %}
+{% block content %}
+<div class="m-card">
+  <div class="m-row"><span class="k">当前用户</span><span class="v">{{ user.user_name }}</span></div>
+  <div class="m-row"><span class="k">角色</span><span class="v">{{ perms_role_name(user.role) }}</span></div>
+  <div class="m-row"><span class="k">所属部门</span><span class="v">
+    {% set ids = (user.dept_ids or '').split(';') %}
+    {% for d in ids if d %}{{ perms_dept_name(d) }}{% if not loop.last %}、{% endif %}{% endfor %}
+  </span></div>
+</div>
+
+<div class="m-card">
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_change_password') }}">修改密码</a>
+  {% if perms.can_query(user) %}
+  <div style="height:10px"></div>
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_transactions') }}">出入库明细</a>
+  {% endif %}
+  {% if perms.can_stocktake(user) %}
+  <div style="height:10px"></div>
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_stocktake') }}">库存盘点</a>
+  {% endif %}
+  {% if perms.can_query(user) %}
+  <div style="height:10px"></div>
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_reports') }}">报表导出</a>
+  {% endif %}
+  {% if perms.can_manage_forms(user) %}
+  <div style="height:10px"></div>
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_forms') }}">表单维护</a>
+  {% endif %}
+  {% if perms.can_manage_users(user) %}
+  <div style="height:10px"></div>
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_users') }}">用户管理</a>
+  {% endif %}
+  {% if perms.is_sys_admin(user) %}
+  <div style="height:10px"></div>
+  <a class="m-btn m-btn-ghost" href="{{ url_for('m_logs') }}">操作日志</a>
+  {% endif %}
+</div>
+
+<div class="m-card">
+  <a class="m-btn m-btn-danger" href="{{ url_for('logout') }}">退出登录</a>
+</div>
+{% endblock %}

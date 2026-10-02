@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>{% block title %}物料进销存{% endblock %}</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:#f5f6fa; color:#333; font-size:15px; }
+.m-header { background:#1a4d8f; color:#fff; padding:14px 16px; text-align:center; font-size:17px; font-weight:bold; position:sticky; top:0; z-index:10; }
+.m-header .sub { font-size:12px; font-weight:normal; color:#bcd; margin-top:2px; }
+.m-content { padding:14px 12px 90px; max-width:520px; margin:0 auto; }
+.m-tabbar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e5e5e5; display:flex; z-index:10; }
+.m-tabbar a { flex:1; text-align:center; padding:8px 0 10px; text-decoration:none; color:#999; font-size:12px; }
+.m-tabbar a .icon { font-size:20px; display:block; margin-bottom:2px; }
+.m-tabbar a.active { color:#1a4d8f; }
+.m-card { background:#fff; border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.m-alert { padding:12px 14px; border-radius:10px; margin-bottom:12px; font-size:14px; line-height:1.5; }
+.m-alert-error { background:#fff1f0; border:1px solid #ffa39e; color:#cf1322; }
+.m-alert-success { background:#f6ffed; border:1px solid #b7eb8f; color:#389e0d; }
+.m-alert-warn { background:#fff7e6; border:1px solid #ffd591; color:#ad6800; }
+.m-btn { display:block; width:100%; padding:14px 0; border:none; border-radius:10px; font-size:16px; font-weight:bold; text-align:center; text-decoration:none; cursor:pointer; }
+.m-btn-primary { background:#1a4d8f; color:#fff; }
+.m-btn-danger { background:#cf1322; color:#fff; }
+.m-btn-success { background:#389e0d; color:#fff; }
+.m-btn-ghost { background:#fff; color:#1a4d8f; border:1px solid #1a4d8f; }
+.m-btn:active { opacity:0.8; }
+.m-btn-row { display:flex; gap:10px; }
+.m-btn-row .m-btn { flex:1; }
+label.m-lab { display:block; font-size:14px; color:#666; margin:12px 0 6px; font-weight:bold; }
+.m-input, .m-select { width:100%; padding:12px 10px; border:1px solid #d9d9d9; border-radius:8px; font-size:16px; font-family:inherit; background:#fff; }
+.m-input:focus, .m-select:focus { border-color:#1a4d8f; outline:none; }
+.req { color:#f5222d; }
+.m-tag { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; }
+.m-tag-in { background:#f6ffed; color:#389e0d; }
+.m-tag-out { background:#fff1f0; color:#cf1322; }
+.m-tag-warn { background:#fff7e6; color:#d46b08; }
+.m-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f0f0f0; }
+.m-row:last-child { border-bottom:none; }
+.m-row .k { color:#999; font-size:13px; }
+.m-row .v { font-weight:bold; text-align:right; }
+.m-item { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.m-item .title { font-weight:bold; font-size:15px; margin-bottom:6px; }
+.m-item .meta { color:#999; font-size:13px; line-height:1.7; }
+.m-item.low { border-left:4px solid #f5222d; }
+.m-empty { text-align:center; color:#bbb; padding:36px 0; font-size:14px; }
+.m-tabs { display:flex; background:#fff; border-radius:10px; margin-bottom:14px; overflow:hidden; border:1px solid #e8e8e8; }
+.m-tabs a { flex:1; text-align:center; padding:11px 0; text-decoration:none; color:#666; font-size:14px; }
+.m-tabs a.active { background:#1a4d8f; color:#fff; }
+.m-steps { display:flex; margin-bottom:16px; }
+.m-steps .step { flex:1; text-align:center; font-size:11px; color:#bbb; position:relative; padding-top:22px; }
+.m-steps .step:before { content:''; position:absolute; top:8px; left:50%; margin-left:-7px; width:14px; height:14px; border-radius:50%; background:#ddd; z-index:1; }
+.m-steps .step:after { content:''; position:absolute; top:14px; left:-50%; width:100%; height:2px; background:#ddd; }
+.m-steps .step:first-child:after { display:none; }
+.m-steps .step.on { color:#1a4d8f; font-weight:bold; }
+.m-steps .step.on:before { background:#1a4d8f; }
+.m-steps .step.done:before { background:#389e0d; }
+.m-steps .step.done:after { background:#389e0d; }
+.m-filter select { width:100%; margin-bottom:8px; }
+.m-stat { display:flex; flex-wrap:wrap; gap:10px; }
+.m-stat .sc { flex:1; min-width:140px; background:#fff; border-radius:12px; padding:14px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.m-stat .sc .num { font-size:24px; font-weight:bold; color:#1a4d8f; }
+.m-stat .sc .num.red { color:#cf1322; }
+.m-stat .sc .lbl { font-size:12px; color:#999; margin-top:3px; }
+.m-dl { background:#fff; border-radius:12px; padding:6px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.m-dl .m-row .k { width:35%; text-align:left; }
+.m-dl .m-row .v { width:65%; text-align:left; }
+.m-login { max-width:400px; margin:0 auto; padding:30px 20px; }
+.m-login .logo { text-align:center; font-size:20px; font-weight:bold; color:#1a4d8f; margin-bottom:30px; }
+</style>
+</head>
+<body>
+{% block body %}
+{% if user %}
+<div class="m-header">
+  {% block mtitle %}物料进销存{% endblock %}
+  <div class="sub">市场管理中心 · 物料仓库</div>
+</div>
+<div class="m-content">
+  {% block content %}{% endblock %}
+</div>
+<div class="m-tabbar">
+  <a href="{{ url_for('m_index') }}" class="{% if request.path in ('/m/', '/m', '/') %}active{% endif %}"><span class="icon">🏠</span>首页</a>
+  {% if perms.can_inbound(user) %}
+  <a href="{{ url_for('m_inbound') }}" class="{% if request.path.startswith('/m/inbound') %}active{% endif %}"><span class="icon">📥</span>入库</a>
+  {% endif %}
+  {% if perms.can_outbound(user) %}
+  <a href="{{ url_for('m_outbound') }}" class="{% if request.path.startswith('/m/outbound') %}active{% endif %}"><span class="icon">📤</span>出库</a>
+  {% endif %}
+  {% if perms.can_query(user) %}
+  <a href="{{ url_for('m_inventory') }}" class="{% if request.path.startswith('/m/inventory') or request.path.startswith('/m/transactions') %}active{% endif %}"><span class="icon">🔍</span>查询</a>
+  {% endif %}
+  <a href="{{ url_for('m_profile') }}" class="{% if request.path.startswith('/m/profile') %}active{% endif %}"><span class="icon">👤</span>我的</a>
+</div>
+{% else %}
+{% block guest %}{% endblock %}
+{% endif %}
+{% endblock %}
+</body>
+</html>

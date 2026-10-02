@@ -1,0 +1,209 @@
+{% extends 'mobile/base.html' %}
+{% block title %}出库{% endblock %}
+{% block mtitle %}出库登记{% endblock %}
+{% block content %}
+
+{% if errors %}
+<div class="m-alert m-alert-error">
+  <b>操作失败：</b><br>
+  {% for e in errors %}· {{ e }}<br>{% endfor %}
+</div>
+{% endif %}
+{% if success %}
+<div class="m-alert m-alert-success">✅ {{ success }}</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('outbound_do') }}" id="wform">
+  <!-- 第 1 步 -->
+  <div class="m-step-page" data-step="1">
+    <div class="m-steps">
+      <div class="step on">1 选部门</div><div class="step">2 选物料</div>
+      <div class="step">3 领用信息</div><div class="step">4 数量</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">出库日期<span class="req">*</span></label>
+      <input class="m-input" type="date" name="out_date" value="{{ form.out_date if form else today }}" required>
+      <label class="m-lab">发出部门<span class="req">*</span></label>
+      <select class="m-select" name="dept_id" id="dept_id" onchange="loadUsers()" required>
+        <option value="">请选择部门</option>
+        {% for did, dn in depts %}
+        <option value="{{ did }}" {% if form and form.dept_id == did %}selected{% endif %}>{{ dn }}</option>
+        {% endfor %}
+      </select>
+      <label class="m-lab">发出人员<span class="req">*</span></label>
+      <select class="m-select" name="user_id" id="user_id" onchange="loadStock()" required>
+        <option value="">请先选择部门</option>
+      </select>
+      <button type="button" class="m-btn m-btn-primary" style="margin-top:20px" onclick="nextStep(1)">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- 第 2 步 -->
+  <div class="m-step-page" data-step="2" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 选部门</div><div class="step on">2 选物料</div>
+      <div class="step">3 领用信息</div><div class="step">4 数量</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">选择物料<span class="req">*</span></label>
+      <select class="m-select" name="stock_id" id="stock_id" onchange="pickStock()" required>
+        <option value="">请先选择部门和人员</option>
+      </select>
+      <div id="stock-info" style="margin-top:12px"></div>
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevStep(2)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextStep(2)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第 3 步 -->
+  <div class="m-step-page" data-step="3" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 选部门</div><div class="step done">2 选物料</div>
+      <div class="step on">3 领用信息</div><div class="step">4 数量</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">领用部门<span class="req">*</span></label>
+      <input class="m-input" type="text" name="recv_dept" list="company_dept_list" value="{{ form.recv_dept if form else '' }}" required placeholder="选择或输入领用部门">
+      <datalist id="company_dept_list">
+        {% for d in company_depts %}<option value="{{ d }}">{% endfor %}
+      </datalist>
+      <label class="m-lab">领用人<span class="req">*</span></label>
+      <input class="m-input" type="text" name="recv_person" value="{{ form.recv_person if form else '' }}" required>
+      <label class="m-lab">申请单号<span class="req">*</span></label>
+      <input class="m-input" type="text" name="apply_no" value="{{ form.apply_no if form else '' }}" required>
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevStep(3)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextStep(3)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第 4 步 -->
+  <div class="m-step-page" data-step="4" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 选部门</div><div class="step done">2 选物料</div>
+      <div class="step done">3 领用信息</div><div class="step on">4 数量</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">申请数量<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="numeric" name="apply_qty" id="apply_qty" min="1" value="{{ form.apply_qty if form else '' }}" required>
+      <label class="m-lab">实际领用数量<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="numeric" name="actual_qty" id="actual_qty" min="1" value="{{ form.actual_qty if form else '' }}" required>
+      <label class="m-lab">用途（可不填）</label>
+      <input class="m-input" type="text" name="purpose" value="{{ form.purpose if form else '' }}">
+      <label class="m-lab">备注（可不填）</label>
+      <input class="m-input" type="text" name="remark" value="{{ form.remark if form else '' }}">
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevStep(4)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextStep(4)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第 5 步 -->
+  <div class="m-step-page" data-step="5" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 选部门</div><div class="step done">2 选物料</div>
+      <div class="step done">3 领用信息</div><div class="step done">4 数量</div><div class="step on">5 确认</div>
+    </div>
+    <div class="m-dl" id="confirm-box">
+      <div class="m-row"><span class="k">出库日期</span><span class="v" id="c-out_date">-</span></div>
+      <div class="m-row"><span class="k">发出部门/人员</span><span class="v" id="c-dept">-</span></div>
+      <div class="m-row"><span class="k">物料</span><span class="v" id="c-mat">-</span></div>
+      <div class="m-row"><span class="k">领用</span><span class="v" id="c-recv">-</span></div>
+      <div class="m-row"><span class="k">申请单号</span><span class="v" id="c-no">-</span></div>
+      <div class="m-row"><span class="k">申请/实际</span><span class="v" id="c-qty">-</span></div>
+    </div>
+    <div class="m-btn-row" style="margin-top:16px">
+      <button type="button" class="m-btn m-btn-ghost" onclick="prevStep(5)">← 上一步</button>
+      <button type="submit" class="m-btn m-btn-danger">确认出库</button>
+    </div>
+  </div>
+</form>
+
+<script>
+function showStep(n) {
+  document.querySelectorAll('.m-step-page').forEach(function(p) {
+    p.style.display = (p.dataset.step === String(n)) ? '' : 'none';
+  });
+  window.scrollTo(0, 0);
+}
+function nextStep(cur) {
+  // 简单非空校验
+  var page = document.querySelector('[data-step="' + cur + '"]');
+  var inputs = page.querySelectorAll('input[required], select[required]');
+  for (var i = 0; i < inputs.length; i++) {
+    if (!inputs[i].value) {
+      alert((inputs[i].previousElementSibling && inputs[i].previousElementSibling.tagName === 'LABEL'
+             ? inputs[i].previousElementSibling.textContent : '此项') + ' 必填');
+      inputs[i].focus();
+      return;
+    }
+  }
+  if (cur < 5) { showStep(cur + 1); if (cur + 1 === 5) fillConfirm(); }
+}
+function prevStep(cur) { if (cur > 1) showStep(cur - 1); }
+
+function loadUsers() {
+  var deptSel = document.getElementById('dept_id');
+  var userSel = document.getElementById('user_id');
+  userSel.innerHTML = '<option value="">请选择人员</option>';
+  document.getElementById('stock_id').innerHTML = '<option value="">请选择物料</option>';
+  document.getElementById('stock-info').innerHTML = '';
+  if (!deptSel.value) return;
+  fetch('{{ url_for("api_users_by_dept") }}?dept_id=' + deptSel.value)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      userSel.innerHTML = '<option value="">请选择人员</option>';
+      list.forEach(function(u) {
+        var o = document.createElement('option');
+        o.value = u.user_id; o.textContent = u.user_name;
+        userSel.appendChild(o);
+      });
+    });
+}
+function loadStock() {
+  var dept = document.getElementById('dept_id').value;
+  var uid = document.getElementById('user_id').value;
+  var sel = document.getElementById('stock_id');
+  sel.innerHTML = '<option value="">请选择物料</option>';
+  document.getElementById('stock-info').innerHTML = '';
+  if (!dept || !uid) return;
+  fetch('{{ url_for("api_stock_by_owner") }}?dept_id=' + dept + '&user_id=' + uid)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      sel.innerHTML = '<option value="">请选择物料</option>';
+      list.forEach(function(s) {
+        var o = document.createElement('option');
+        o.value = s.stock_id;
+        o.textContent = '[' + s.category_name + '] ' + s.material_name + '（库存' + s.quantity + s.unit_name + '）';
+        sel.appendChild(o);
+      });
+      window.__stocks = list;
+    });
+}
+function pickStock() {
+  var sel = document.getElementById('stock_id');
+  var s = (window.__stocks || []).find(function(x){ return x.stock_id === sel.value; });
+  document.getElementById('stock-info').innerHTML = s
+    ? '<div class="m-alert m-alert-warn">现有库存：<b>' + s.quantity + s.unit_name + '</b>　单位：' + s.unit_name + '</div>'
+    : '';
+}
+function fillConfirm() {
+  var dept = document.getElementById('dept_id');
+  var user = document.getElementById('user_id');
+  var stock = document.getElementById('stock_id');
+  document.getElementById('c-out_date').textContent = (document.querySelector('[name=out_date]') || {}).value || '-';
+  document.getElementById('c-dept').textContent =
+    (dept.selectedOptions[0] || {}).text + ' / ' + (user.selectedOptions[0] || {}).text;
+  document.getElementById('c-mat').textContent = (stock.selectedOptions[0] || {}).text;
+  document.getElementById('c-recv').textContent =
+    document.querySelector('[name=recv_dept]').value + ' / ' + document.querySelector('[name=recv_person]').value;
+  document.getElementById('c-no').textContent = document.querySelector('[name=apply_no]').value;
+  document.getElementById('c-qty').textContent =
+    document.getElementById('apply_qty').value + ' / ' + document.getElementById('actual_qty').value;
+}
+</script>
+{% endblock %}

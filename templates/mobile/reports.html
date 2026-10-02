@@ -1,0 +1,33 @@
+{% extends 'mobile/base.html' %}
+{% block title %}报表导出{% endblock %}
+{% block mtitle %}报表导出{% endblock %}
+{% block content %}
+<div class="m-card">
+  <form method="post" action="{{ url_for('reports_export') }}">
+    <label class="m-lab">报表类型<span class="req">*</span></label>
+    <select class="m-select" name="kind">
+      <option value="stock">库存汇总（当前快照）</option>
+      <option value="in">入库明细（按日期段）</option>
+      <option value="out">出库明细（按日期段）</option>
+    </select>
+    <label class="m-lab">部门筛选</label>
+    <select class="m-select" name="dept_id">
+      <option value="">全部部门</option>
+      {% for did, dn in depts %}
+      <option value="{{ did }}">{{ dn }}</option>
+      {% endfor %}
+    </select>
+    <label class="m-lab">起始日期</label>
+    <input class="m-input" type="date" name="from_date">
+    <label class="m-lab">截止日期</label>
+    <input class="m-input" type="date" name="to_date">
+    <label class="m-lab">导出格式</label>
+    <select class="m-select" name="fmt">
+      <option value="xlsx">Excel（.xlsx）</option>
+      <option value="csv">CSV</option>
+    </select>
+    <button type="submit" class="m-btn m-btn-primary" style="margin-top:20px">导出报表</button>
+  </form>
+</div>
+<div class="m-alert m-alert-warn">⚠️ 微信内置浏览器可能拦截文件下载，若无法下载请点右上角「…」选择「在浏览器中打开」。</div>
+{% endblock %}

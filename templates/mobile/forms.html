@@ -1,0 +1,93 @@
+{% extends 'mobile/base.html' %}
+{% block title %}表单维护{% endblock %}
+{% block mtitle %}表单维护{% endblock %}
+{% block content %}
+<div class="m-alert m-alert-warn">仅维护字典数据（部门/大类/计量单位/供应商）。业务数据必须通过入库/出库/盘点功能修改。</div>
+
+<div class="m-tabs" id="dict-tabs">
+  <a href="javascript:void(0)" data-t="dept" class="{% if tab == 'dept' %}active{% endif %}">部门</a>
+  <a href="javascript:void(0)" data-t="category" class="{% if tab == 'category' %}active{% endif %}">大类</a>
+  <a href="javascript:void(0)" data-t="unit" class="{% if tab == 'unit' %}active{% endif %}">计量单位</a>
+  <a href="javascript:void(0)" data-t="supplier" class="{% if tab == 'supplier' %}active{% endif %}">供应商</a>
+</div>
+
+<div class="m-card">
+  <div style="display:flex;gap:8px">
+    <input class="m-input" id="new-name" placeholder="输入名称" style="flex:1">
+    <button class="m-btn m-btn-primary" style="width:90px;flex:none" onclick="addItem()">＋新增</button>
+  </div>
+</div>
+
+<div id="dict-list"></div>
+
+<script>
+var LABELS = {dept:'部门', category:'大类', unit:'计量单位', supplier:'供应商'};
+var curTab = '{{ tab or "category" }}';
+var ID_F = {dept:'dept_id', category:'category_id', unit:'unit_id', supplier:'supplier_id'};
+var NM_F = {dept:'dept_name', category:'category_name', unit:'unit_name', supplier:'supplier_name'};
+
+document.querySelectorAll('#dict-tabs a').forEach(function(a) {
+  a.onclick = function() {
+    curTab = a.dataset.t;
+    document.querySelectorAll('#dict-tabs a').forEach(function(x) {
+      x.classList.toggle('active', x.dataset.t === curTab);
+    });
+    loadList();
+  };
+});
+
+function loadList() {
+  fetch('{{ url_for("api_forms_list", kind="__X__") }}'.replace('__X__', curTab))
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      var box = document.getElementById('dict-list');
+      if (!list.length) { box.innerHTML = '<div class="m-empty">暂无数据</div>'; return; }
+      box.innerHTML = '';
+      list.forEach(function(r) {
+        var el = document.createElement('div');
+        el.className = 'm-item';
+        el.innerHTML = '<div class="title">' + r[NM_F[curTab]] +
+          '<span style="float:right">' +
+          '<button class="m-btn m-btn-ghost" style="width:64px;padding:6px;font-size:13px;display:inline-block" onclick="editItem(\'' + r[ID_F[curTab]] + '\')">修改</button>' +
+          '<button class="m-btn m-btn-danger" style="width:64px;padding:6px;font-size:13px;display:inline-block;margin-left:6px" onclick="delItem(\'' + r[ID_F[curTab]] + '\')">删除</button>' +
+          '</span></div>';
+        box.appendChild(el);
+      });
+    });
+}
+function addItem() {
+  var name = document.getElementById('new-name').value.trim();
+  if (!name) { alert('名称不能为空'); return; }
+  fetch('{{ url_for("api_forms_add", kind="__X__") }}'.replace('__X__', curTab), {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name})
+  }).then(function(r){ return r.json(); })
+    .then(function(j) {
+      if (!j.ok) { alert(j.msg); return; }
+      document.getElementById('new-name').value = '';
+      loadList();
+    });
+}
+function editItem(id) {
+  var name = prompt('请输入新名称：');
+  if (!name) return;
+  fetch('{{ url_for("api_forms_edit", kind="__X__", rid="__Y__") }}'.replace('__X__', curTab).replace('__Y__', id), {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name})
+  }).then(function(r){ return r.json(); })
+    .then(function(j) { if (!j.ok) alert(j.msg); loadList(); });
+}
+function delItem(id) {
+  var url = '{{ url_for("api_forms_check_delete", kind="__X__", rid="__Y__") }}'.replace('__X__', curTab).replace('__Y__', id);
+  fetch(url).then(function(r){ return r.json(); })
+    .then(function(j) {
+      if (!j.ok) { alert(j.msg); return; }
+      if (!confirm('确认删除？')) return;
+      var durl = '{{ url_for("api_forms_delete", kind="__X__", rid="__Y__") }}'.replace('__X__', curTab).replace('__Y__', id);
+      fetch(durl, {method: 'POST'}).then(function(r){ return r.json(); })
+        .then(function(j2) { if (!j2.ok) alert(j2.msg); loadList(); });
+    });
+}
+loadList();
+</script>
+{% endblock %}

@@ -1,0 +1,289 @@
+{% extends 'mobile/base.html' %}
+{% block title %}入库{% endblock %}
+{% block mtitle %}入库登记{% endblock %}
+{% block content %}
+
+{% if errors %}
+<div class="m-alert m-alert-error">
+  <b>操作失败：</b><br>
+  {% for e in errors %}· {{ e }}<br>{% endfor %}
+</div>
+{% endif %}
+{% if success %}
+<div class="m-alert m-alert-success">✅ {{ success }}</div>
+{% endif %}
+
+<div class="m-tabs" id="m-tabs">
+  <a href="javascript:void(0)" id="tab-new" class="{% if not tab or tab == 'new' %}active{% endif %}" onclick="switchTab('new')">新品入库</a>
+  <a href="javascript:void(0)" id="tab-restock" class="{% if tab == 'restock' %}active{% endif %}" onclick="switchTab('restock')">续作入库</a>
+</div>
+
+<!-- ========== 新品入库（5 步） ========== -->
+<form method="post" action="{{ url_for('inbound_new') }}" id="form-new">
+  <div class="sp" data-s="1">
+    <div class="m-steps">
+      <div class="step on">1 日期部门</div><div class="step">2 物料</div><div class="step">3 单位数量</div>
+      <div class="step">4 中标信息</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">入库日期<span class="req">*</span></label>
+      <input class="m-input" type="date" name="in_date" value="{{ form.in_date if form else today }}" required>
+      <label class="m-lab">归属部门<span class="req">*</span></label>
+      <select class="m-select" name="dept_id" id="n_dept" onchange="loadUsers('n_')" required>
+        <option value="">请选择部门</option>
+        {% for did, dn in depts %}
+        <option value="{{ did }}" {% if form and form.dept_id == did %}selected{% endif %}>{{ dn }}</option>
+        {% endfor %}
+      </select>
+      <label class="m-lab">归属人员<span class="req">*</span></label>
+      <select class="m-select" name="user_id" id="n_user" required>
+        <option value="">请先选择部门</option>
+      </select>
+      <button type="button" class="m-btn m-btn-primary" style="margin-top:20px" onclick="nextS(1,'n')">下一步 →</button>
+    </div>
+  </div>
+  <div class="sp" data-s="2" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 日期部门</div><div class="step on">2 物料</div><div class="step">3 单位数量</div>
+      <div class="step">4 中标信息</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">大类<span class="req">*</span></label>
+      <select class="m-select" name="category_id" required>
+        <option value="">请选择大类</option>
+        {% for cid, cn in categories %}
+        <option value="{{ cid }}" {% if form and form.category_id == cid %}selected{% endif %}>{{ cn }}</option>
+        {% endfor %}
+      </select>
+      <label class="m-lab">物料名称<span class="req">*</span></label>
+      <input class="m-input" type="text" name="material_name" value="{{ form.material_name if form else '' }}" required placeholder="输入新物料名称">
+      <label class="m-lab">供应商<span class="req">*</span></label>
+      <input class="m-input" type="text" name="supplier_name" list="supplier_list" value="{{ form.supplier_name if form else '' }}" required placeholder="选择或输入供应商">
+      <datalist id="supplier_list">
+        {% for s in suppliers %}<option value="{{ s }}">{% endfor %}
+      </datalist>
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevS(2)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextS(2)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+  <div class="sp" data-s="3" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 日期部门</div><div class="step done">2 物料</div><div class="step on">3 单位数量</div>
+      <div class="step">4 中标信息</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">计量单位<span class="req">*</span></label>
+      <select class="m-select" name="unit_id" required>
+        <option value="">请选择单位</option>
+        {% for uid, un in units %}
+        <option value="{{ uid }}" {% if form and form.unit_id == uid %}selected{% endif %}>{{ un }}</option>
+        {% endfor %}
+      </select>
+      <label class="m-lab">入库数量<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="numeric" name="quantity" min="1" value="{{ form.quantity if form else '' }}" required>
+      <label class="m-lab">安全库存阈值<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="numeric" name="safety_threshold" min="0" value="{{ form.safety_threshold if form else '' }}" required placeholder="低于此数量将预警">
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevS(3)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextS(3)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+  <div class="sp" data-s="4" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 日期部门</div><div class="step done">2 物料</div><div class="step done">3 单位数量</div>
+      <div class="step on">4 中标信息</div><div class="step">5 确认</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">中标时间<span class="req">*</span></label>
+      <input class="m-input" type="date" name="bid_date" value="{{ form.bid_date if form else '' }}" required>
+      <label class="m-lab">中标价格（元）<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="decimal" name="bid_price" step="0.01" min="0" value="{{ form.bid_price if form else '' }}" required>
+      <div style="font-size:12px;color:#999;margin-top:6px">仅 总监/副总监/品牌经理/系统管理员 可见</div>
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevS(4)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextS(4)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+  <div class="sp" data-s="5" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 日期部门</div><div class="step done">2 物料</div><div class="step done">3 单位数量</div>
+      <div class="step done">4 中标信息</div><div class="step on">5 确认</div>
+    </div>
+    <div class="m-dl" id="n-confirm">
+      <div class="m-row"><span class="k">入库日期</span><span class="v" id="n-c-date">-</span></div>
+      <div class="m-row"><span class="k">归属</span><span class="v" id="n-c-owner">-</span></div>
+      <div class="m-row"><span class="k">物料</span><span class="v" id="n-c-mat">-</span></div>
+      <div class="m-row"><span class="k">供应商</span><span class="v" id="n-c-sup">-</span></div>
+      <div class="m-row"><span class="k">单位/数量</span><span class="v" id="n-c-qty">-</span></div>
+      <div class="m-row"><span class="k">安全阈值</span><span class="v" id="n-c-th">-</span></div>
+      <div class="m-row"><span class="k">中标时间</span><span class="v" id="n-c-bd">-</span></div>
+      <div class="m-row"><span class="k">中标价格</span><span class="v" id="n-c-bp">-</span></div>
+    </div>
+    <div class="m-btn-row" style="margin-top:16px">
+      <button type="button" class="m-btn m-btn-ghost" onclick="prevS(5)">← 上一步</button>
+      <button type="submit" class="m-btn m-btn-success">确认新品入库</button>
+    </div>
+  </div>
+</form>
+
+<!-- ========== 续作入库（3 步） ========== -->
+<form method="post" action="{{ url_for('inbound_restock') }}" id="form-restock" style="display:none">
+  <div class="rsp" data-s="1">
+    <div class="m-steps">
+      <div class="step on">1 日期部门</div><div class="step">2 选物料</div><div class="step">3 数量提交</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">入库日期<span class="req">*</span></label>
+      <input class="m-input" type="date" name="in_date" value="{{ form.in_date if form else today }}" required>
+      <label class="m-lab">归属部门<span class="req">*</span></label>
+      <select class="m-select" name="dept_id" id="r_dept" onchange="loadUsers('r_')" required>
+        <option value="">请选择部门</option>
+        {% for did, dn in depts %}
+        <option value="{{ did }}" {% if form and form.dept_id == did %}selected{% endif %}>{{ dn }}</option>
+        {% endfor %}
+      </select>
+      <label class="m-lab">归属人员<span class="req">*</span></label>
+      <select class="m-select" name="user_id" id="r_user" onchange="loadRStock()" required>
+        <option value="">请先选择部门</option>
+      </select>
+      <button type="button" class="m-btn m-btn-primary" style="margin-top:20px" onclick="nextR(1)">下一步 →</button>
+    </div>
+  </div>
+  <div class="rsp" data-s="2" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 日期部门</div><div class="step on">2 选物料</div><div class="step">3 数量提交</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">选择物料<span class="req">*</span></label>
+      <select class="m-select" name="stock_id" id="r_stock" onchange="pickRStock()" required>
+        <option value="">请先选择部门和人员</option>
+      </select>
+      <div id="r-info" style="margin-top:12px"></div>
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevR(2)">← 上一步</button>
+        <button type="button" class="m-btn m-btn-primary" onclick="nextR(2)">下一步 →</button>
+      </div>
+    </div>
+  </div>
+  <div class="rsp" data-s="3" style="display:none">
+    <div class="m-steps">
+      <div class="step done">1 日期部门</div><div class="step done">2 选物料</div><div class="step on">3 数量提交</div>
+    </div>
+    <div class="m-card">
+      <label class="m-lab">供应商<span class="req">*</span></label>
+      <input class="m-input" type="text" name="supplier_name" id="r_supplier" list="supplier_list" required placeholder="选择或输入供应商">
+      <label class="m-lab">入库数量<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="numeric" name="quantity" min="1" value="{{ form.quantity if form else '' }}" required>
+      <label class="m-lab">安全库存阈值<span class="req">*</span></label>
+      <input class="m-input" type="number" inputmode="numeric" name="safety_threshold" id="r_th" min="0" value="{{ form.safety_threshold if form else '' }}" required>
+      <div style="font-size:12px;color:#999;margin-top:6px">默认带出现值，可修改</div>
+      <div class="m-btn-row" style="margin-top:20px">
+        <button type="button" class="m-btn m-btn-ghost" onclick="prevR(3)">← 上一步</button>
+        <button type="submit" class="m-btn m-btn-success">确认续作入库</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+function switchTab(t) {
+  document.getElementById('form-new').style.display = (t === 'new') ? '' : 'none';
+  document.getElementById('form-restock').style.display = (t === 'restock') ? '' : 'none';
+  document.getElementById('tab-new').classList.toggle('active', t === 'new');
+  document.getElementById('tab-restock').classList.toggle('active', t === 'restock');
+  window.scrollTo(0, 0);
+}
+{% if tab == 'restock' %}switchTab('restock');{% endif %}
+
+function loadUsers(prefix) {
+  var deptSel = document.getElementById(prefix + 'dept');
+  var userSel = document.getElementById(prefix + 'user');
+  userSel.innerHTML = '<option value="">请选择人员</option>';
+  if (prefix === 'r_') {
+    document.getElementById('r_stock').innerHTML = '<option value="">请先选择部门和人员</option>';
+    document.getElementById('r_info').innerHTML = '';
+  }
+  if (!deptSel.value) return;
+  fetch('{{ url_for("api_users_by_dept") }}?dept_id=' + deptSel.value)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      userSel.innerHTML = '<option value="">请选择人员</option>';
+      list.forEach(function(u) {
+        var o = document.createElement('option');
+        o.value = u.user_id; o.textContent = u.user_name;
+        userSel.appendChild(o);
+      });
+    });
+}
+
+function showS(n, cls) {
+  document.querySelectorAll('.' + cls).forEach(function(p) {
+    p.style.display = (p.dataset.s === String(n)) ? '' : 'none';
+  });
+  window.scrollTo(0, 0);
+}
+function chk(cur, cls) {
+  var page = document.querySelector('.' + cls + '[data-s="' + cur + '"]');
+  var inputs = page.querySelectorAll('input[required], select[required]');
+  for (var i = 0; i < inputs.length; i++) {
+    if (!inputs[i].value) {
+      alert('此项必填');
+      inputs[i].focus();
+      return false;
+    }
+  }
+  return true;
+}
+function nextS(cur) { if (chk(cur, 'sp')) { if (cur < 5) { showS(cur + 1, 'sp'); if (cur + 1 === 5) fillNConfirm(); } } }
+function prevS(cur) { if (cur > 1) showS(cur - 1, 'sp'); }
+function nextR(cur) { if (chk(cur, 'rsp')) { if (cur < 3) showS(cur + 1, 'rsp'); } }
+function prevR(cur) { if (cur > 1) showS(cur - 1, 'rsp'); }
+
+function loadRStock() {
+  var dept = document.getElementById('r_dept').value;
+  var uid = document.getElementById('r_user').value;
+  var sel = document.getElementById('r_stock');
+  sel.innerHTML = '<option value="">请选择物料</option>';
+  document.getElementById('r_info').innerHTML = '';
+  if (!dept || !uid) return;
+  fetch('{{ url_for("api_stock_by_owner") }}?dept_id=' + dept + '&user_id=' + uid)
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      sel.innerHTML = '<option value="">请选择物料</option>';
+      list.forEach(function(s) {
+        var o = document.createElement('option');
+        o.value = s.stock_id;
+        o.textContent = '[' + s.category_name + '] ' + s.material_name + '（库存' + s.quantity + s.unit_name + '）';
+        sel.appendChild(o);
+      });
+      window.__rstocks = list;
+    });
+}
+function pickRStock() {
+  var sel = document.getElementById('r_stock');
+  var s = (window.__rstocks || []).find(function(x){ return x.stock_id === sel.value; });
+  if (!s) return;
+  document.getElementById('r_supplier').value = s.supplier_name;
+  document.getElementById('r_th').value = s.safety_threshold;
+  document.getElementById('r_info').innerHTML =
+    '<div class="m-alert m-alert-warn">当前库存：<b>' + s.quantity + s.unit_name + '</b>　单位：' + s.unit_name + '（不可改）</div>';
+}
+function fillNConfirm() {
+  var g = function(n) { return (document.querySelector('#form-new [name=' + n + ']') || {}).value || '-'; };
+  var ds = function(id) { var el = document.getElementById(id); return (el.selectedOptions[0] || {}).text || '-'; };
+  document.getElementById('n-c-date').textContent = g('in_date');
+  document.getElementById('n-c-owner').textContent = ds('n_dept') + ' / ' + ds('n_user');
+  document.getElementById('n-c-mat').textContent =
+    (document.querySelector('#form-new [name=category_id]').selectedOptions[0].text + ' / ' + g('material_name'));
+  document.getElementById('n-c-sup').textContent = g('supplier_name');
+  document.getElementById('n-c-qty').textContent = g('unit_id') === '-' ? '-' : (document.querySelector('#form-new [name=unit_id]').selectedOptions[0].text + ' × ' + g('quantity'));
+  document.getElementById('n-c-th').textContent = g('safety_threshold');
+  document.getElementById('n-c-bd').textContent = g('bid_date');
+  document.getElementById('n-c-bp').textContent = g('bid_price') + ' 元';
+}
+</script>
+{% endblock %}

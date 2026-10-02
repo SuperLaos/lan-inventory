@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% block title %}用户管理{% endblock %}
+{% block content %}
+<h2>用户管理</h2>
+<div class="alert alert-error" style="background:#fff7e6;border-color:#ffd591;color:#ad6800">
+  ⚠️ 仅系统管理员可操作。新增用户初始密码为 123456，首次登录强制改密。
+  系统管理员不可被删除、不可被改角色、不可被重置密码。删除用户前该用户名下不能有库存记录。
+</div>
+
+<div class="card">
+  <p style="margin-bottom:14px"><button class="btn btn-sm" onclick="openAdd()">＋ 新增用户</button></p>
+  <table id="user-table">
+    <tr><th>用户名</th><th>角色</th><th>所属部门</th><th>入库</th><th>出库</th><th>分管部门</th><th>操作</th></tr>
+  </table>
+</div>
+
+<div class="modal-mask" id="modal-mask"></div>
+<div class="modal" id="modal" style="display:none;min-width:460px">
+  <h3 id="modal-title">新增用户</h3>
+  <div class="form-group">
+    <label>用户名<span class="req">*</span></label>
+    <input type="text" id="f_user_name">
+  </div>
+  <div class="form-group">
+    <label>角色<span class="req">*</span></label>
+    <select id="f_role">
+      <option value="member">成员</option>
+      <option value="manager">部长</option>
+      <option value="deputy">副总监</option>
+      <option value="director">总监</option>
+      <option value="brand">品牌经理</option>
+      <option value="warehouse">仓库管理员</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>所属部门<span class="req">*</span></label>
+    <div id="f_depts" style="display:inline-block;max-width:300px">
+      {% for did, dn in depts %}
+      <label style="width:auto;text-align:left;margin-right:14px"><input type="checkbox" name="dept" value="{{ did }}"> {{ dn }}</label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="form-group" id="f_managed_wrap" style="display:none">
+    <label>分管部门</label>
+    <div id="f_managed" style="display:inline-block;max-width:300px">
+      {% for did, dn in depts %}
+      <label style="width:auto;text-align:left;margin-right:14px"><input type="checkbox" name="mdept" value="{{ did }}"> {{ dn }}</label>
+      {% endfor %}
+    </div>
+    <div class="hint">仅部长角色需要配置；部长可查询 = 分管部门 + 所属部门</div>
+  </div>
+  <div class="form-group">
+    <label>入库权限</label>
+    <label style="width:auto"><input type="checkbox" id="f_inbound"></label>
+    <span class="hint">按角色自动派生，可单独微调</span>
+  </div>
+  <div class="form-group">
+    <label>出库权限</label>
+    <label style="width:auto"><input type="checkbox" id="f_outbound"></label>
+  </div>
+  <div style="text-align:right;margin-top:18px">
+    <button class="btn btn-sm" style="background:#999" onclick="closeModal()">取消</button>
+    <button class="btn btn-sm btn-success" onclick="submitUser()">保存</button>
+  </div>
+</div>
+
+<script>
+var allUsers = [];
+var editId = null;
+var ROLE_DEFAULTS = {
+  sys_admin: {in: 1, out: 1},
+  brand: {in: 1, out: 0},
+  warehouse: {in: 0, out: 1},
+  director: {in: 0, out: 0},
+  deputy: {in: 0, out: 0},
+  manager: {in: 0, out: 0},
+  member: {in: 0, out: 0}
+};
+
+function loadUsers() {
+  fetch('{{ url_for("api_users_list") }}')
+    .then(function(r){ return r.json(); })
+    .then(function(list) {
+      allUsers = list;
+      var html = '<tr><th>用户名</th><th>角色</th><th>所属部门</th><th>入库</th><th>出库</th><th>分管部门</th><th>操作</th></tr>';
+      list.forEach(function(u) {
+        var isAdmin = u.role === 'sys_admin';
+        html += '<tr><td>' + u.user_name + (isAdmin ? ' 🔒' : '') + '</td><td>' + u.role_name +
+          '</td><td>' + (u.dept_names || '-') + '</td><td>' + (u.can_inbound === '1' ? '✔' : '-') +
+          '</td><td>' + (u.can_outbound === '1' ? '✔' : '-') + '</td><td>' +
+          (u.managed_depts && u.managed_depts.length
+            ? u.managed_depts.map(function(d){ return deptName(d); }).join('、') : '-') +
+          '</td><td>' + (isAdmin ? '<span style="color:#999">内置锁定</span>' :
+          '<button class="btn btn-sm" onclick="openEdit(\'' + u.user_id + '\')">修改</button> ' +
+          '<button class="btn btn-sm" onclick="resetPwd(\'' + u.user_id + '\')">重置密码</button> ' +
+          '<button class="btn btn-sm btn-danger" onclick="delUser(\'' + u.user_id + '\')">删除</button>') +
+          '</td></tr>';
+      });
+      document.getElementById('user-table').innerHTML = html;
+    });
+}
+
+function deptName(did) {
+  var m = {dept_a:'部门A', dept_b:'部门B', dept_c:'部门C', dept_d:'部门D', dept_e:'部门E', dept_f:'部门F', dept_g:'部门G'};
+  return m[did] || did;
+}
+
+function openModal() {
+  document.getElementById('modal-mask').style.display = 'block';
+  document.getElementById('modal').style.display = 'block';
+}
+function closeModal() {
+  document.getElementById('modal-mask').style.display = 'none';
+  document.getElementById('modal').style.display = 'none';
+  editId = null;
+  document.getElementById('f_user_name').value = '';
+  document.getElementById('f_user_name').disabled = false;
+  document.querySelectorAll('#f_depts input').forEach(function(c){ c.checked = false; });
+  document.querySelectorAll('#f_managed input').forEach(function(c){ c.checked = false; });
+}
+
+function onRoleChange() {
+  var role = document.getElementById('f_role').value;
+  var d = ROLE_DEFAULTS[role];
+  document.getElementById('f_inbound').checked = !!d.in;
+  document.getElementById('f_outbound').checked = !!d.out;
+  document.getElementById('f_managed_wrap').style.display = (role === 'manager') ? '' : 'none';
+}
+document.getElementById('f_role').onchange = onRoleChange;
+
+function openAdd() {
+  editId = null;
+  document.getElementById('modal-title').textContent = '新增用户（初始密码 123456）';
+  document.getElementById('f_role').value = 'member';
+  onRoleChange();
+  openModal();
+}
+
+function openEdit(uid) {
+  var u = allUsers.find(function(x){ return x.user_id === uid; });
+  if (!u) return;
+  editId = uid;
+  document.getElementById('modal-title').textContent = '修改用户：' + u.user_name;
+  document.getElementById('f_user_name').value = u.user_name;
+  document.getElementById('f_user_name').disabled = true;
+  document.getElementById('f_role').value = u.role;
+  onRoleChange();
+  document.getElementById('f_inbound').checked = u.can_inbound === '1';
+  document.getElementById('f_outbound').checked = u.can_outbound === '1';
+  document.querySelectorAll('#f_depts input').forEach(function(c) {
+    c.checked = (u.dept_ids || '').split(';').indexOf(c.value) >= 0;
+  });
+  document.querySelectorAll('#f_managed input').forEach(function(c) {
+    c.checked = (u.managed_depts || []).indexOf(c.value) >= 0;
+  });
+  openModal();
+}
+
+function submitUser() {
+  var name = document.getElementById('f_user_name').value.trim();
+  var role = document.getElementById('f_role').value;
+  var depts = Array.from(document.querySelectorAll('#f_depts input:checked')).map(function(c){ return c.value; });
+  var mdepts = Array.from(document.querySelectorAll('#f_managed input:checked')).map(function(c){ return c.value; });
+  if (!name) { alert('用户名不能为空'); return; }
+  if (depts.length === 0) { alert('至少选择一个所属部门'); return; }
+
+  if (!editId) {
+    fetch('{{ url_for("api_users_add") }}', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_name: name, role: role, dept_ids: depts})
+    }).then(function(r){ return r.json(); })
+      .then(function(j) {
+        if (!j.ok) { alert(j.msg); return; }
+        closeModal(); loadUsers();
+      });
+  } else {
+    fetch('{{ url_for("api_users_edit", uid="__X__") }}'.replace('__X__', editId), {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({role: role, dept_ids: depts,
+                            can_inbound: document.getElementById('f_inbound').checked ? '1' : '0',
+                            can_outbound: document.getElementById('f_outbound').checked ? '1' : '0'})
+    }).then(function(r){ return r.json(); })
+      .then(function(j) {
+        if (!j.ok) { alert(j.msg); return; }
+        // 部长分管部门单独提交
+        if (role === 'manager') {
+          fetch('{{ url_for("api_users_managed_depts", uid="__X__") }}'.replace('__X__', editId), {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({dept_ids: mdepts})
+          }).then(function() { closeModal(); loadUsers(); });
+        } else {
+          closeModal(); loadUsers();
+        }
+      });
+  }
+}
+
+function resetPwd(uid) {
+  var u = allUsers.find(function(x){ return x.user_id === uid; });
+  if (!confirm('确认将「' + u.user_name + '」的密码重置为 123456？该用户下次登录需强制改密。')) return;
+  fetch('{{ url_for("api_users_reset_pwd", uid="__X__") }}'.replace('__X__', uid), {method: 'POST'})
+    .then(function(r){ return r.json(); })
+    .then(function(j) { alert(j.msg); loadUsers(); });
+}
+
+function delUser(uid) {
+  var u = allUsers.find(function(x){ return x.user_id === uid; });
+  if (!confirm('确认删除用户「' + u.user_name + '」？')) return;
+  fetch('{{ url_for("api_users_delete", uid="__X__") }}'.replace('__X__', uid), {method: 'POST'})
+    .then(function(r){ return r.json(); })
+    .then(function(j) {
+      if (!j.ok) { alert(j.msg); return; }
+      loadUsers();
+    });
+}
+
+loadUsers();
+</script>
+{% endblock %}

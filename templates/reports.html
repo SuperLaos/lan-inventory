@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}报表导出{% endblock %}
+{% block content %}
+<h2>报表导出</h2>
+<div class="card">
+  <form method="post" action="{{ url_for('reports_export') }}" class="filter-bar" style="display:block">
+    <div class="form-group">
+      <label>报表类型<span class="req">*</span></label>
+      <select name="kind">
+        <option value="stock">库存汇总（当前快照）</option>
+        <option value="in">入库明细（按日期段）</option>
+        <option value="out">出库明细（按日期段）</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>部门筛选</label>
+      <select name="dept_id">
+        <option value="">全部部门</option>
+        {% for did, dn in depts %}
+        <option value="{{ did }}">{{ dn }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>起始日期</label>
+      <input type="date" name="from_date">
+      <label style="width:auto">截止日期</label>
+      <input type="date" name="to_date">
+      <span class="hint">库存汇总不需要选日期；入库/出库明细可按日期段筛选</span>
+    </div>
+    <div class="form-group">
+      <label>导出格式<span class="req">*</span></label>
+      <label style="width:auto"><input type="radio" name="fmt" value="xlsx" checked> Excel（.xlsx）</label>
+      <label style="width:auto"><input type="radio" name="fmt" value="csv"> CSV</label>
+    </div>
+    <div class="form-group">
+      <label></label>
+      <button type="submit" class="btn">导出报表</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <p style="color:#888;font-size:13px">
+    · 报表数据已按你当前账号的查询权限过滤<br>
+    · CSV 用 UTF-8-BOM 编码，Excel 双击打开中文不乱码<br>
+    · 中标价格列仅 总监/副总监/品牌经理/系统管理员 导出时包含
+  </p>
+</div>
+{% endblock %}
